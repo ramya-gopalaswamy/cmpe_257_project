@@ -52,7 +52,7 @@ def main():
         ]
 
         logger.info("Processing complete!")
-        logger.info(f"Saving to {processed_dir}/window_{window_size}.csv")
+        logger.info(f"Saving to {processed_dir}/prices_window_{window_size}.csv")
         X.to_csv(processed_dir / f"window_{window_size}.csv", index=False)
         logger.info("Saved successfully!")
 
