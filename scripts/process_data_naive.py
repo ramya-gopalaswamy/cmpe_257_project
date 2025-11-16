@@ -14,7 +14,7 @@ MAX_WINDOW_SIZE = 5
 
 
 def main():
-    logger.debug("Starting preprocess_data.py")
+    logger.debug("Starting preprocess_data_naive.py")
     logger.info("Loading data...")
 
     logger.debug("Attatching to raw data directory")
