@@ -2,3 +2,4 @@ venv/
 .venv/
 data/full_processed/
 data/naive_processed/
+data/normalized/
