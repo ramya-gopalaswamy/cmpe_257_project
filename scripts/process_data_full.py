@@ -22,11 +22,11 @@ NUM_CROSS_VAL_SPLITS = 5
 
 
 def split_with_window_size(df, size):
-    df["target"] = df.groupby("symbol")["close"].shift(-1)
+    df["target"] = df.groupby("symbol")["close"].pct_change(-1)
     logger.debug(df.head())
 
     logger.debug(f"Processing features for window size {size}...")
-    for i in range(0, size):
+    for i in range(1, size + 1):
         for feat in FEATURES:
             df[f"{feat}_t-{i}"] = df.groupby("symbol")[feat].shift(i)
     logger.debug(f"df with new features:\n{df.head(6)}")
