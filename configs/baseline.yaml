@@ -1,4 +1,4 @@
-experiment_name: baseline
+config_name: baseline
 windows: [2, 3, 4, 5]
 models:
   - name: linear_regression

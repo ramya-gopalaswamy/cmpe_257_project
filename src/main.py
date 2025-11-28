@@ -35,6 +35,8 @@ def main():
     logger.info("Loading config...")
     config = load_config(args.config)
 
+    logging.info(f"Using {config['config_name']} config...")
+
 
 if __name__ == "__main__":
     main()
