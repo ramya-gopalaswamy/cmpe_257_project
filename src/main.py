@@ -2,6 +2,7 @@ import argparse
 import logging
 from pathlib import Path
 
+from src.train import run_cross_validation
 from src.utils import load_config
 
 logging.basicConfig(level=logging.INFO)
@@ -36,6 +37,11 @@ def main():
     config = load_config(args.config)
 
     logging.info(f"Using {config['config_name']} config...")
+
+    logging.info("Running cross validation...")
+    for model_conf in config["models"]:
+        results_df = run_cross_validation(model_conf)
+        print(results_df.head())
 
 
 if __name__ == "__main__":
