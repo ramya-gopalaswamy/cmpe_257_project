@@ -13,7 +13,13 @@ logger = logging.getLogger(__name__)
 RESULTS_DIR = Path("results")
 
 DEFAULT_BUCKET_DAYS = 7
-DEFAULT_EMA_SPAN = 4
+DEFAULT_EMA_SPAN = 20
+
+MARKET_EVENTS = {
+    "2016-01-20": "Oil Crash Low",
+    "2016-06-23": "Brexit Vote",
+    "2016-11-08": "US Election",
+}
 
 
 def get_latest_eval_results(experiment_dir: Path) -> pd.DataFrame:
@@ -54,11 +60,13 @@ def plot_bucketed_r2(
     bucketed_df: pd.DataFrame,
     model_name: str,
     output_path: Path,
+    bucket_days: int,
     ema_span: int = 4,
 ) -> None:
     """Plot R^2 over time with one line per window, smoothed with EMA."""
     fig, ax = plt.subplots(figsize=(10, 6))
 
+    # Plot data lines
     for window in sorted(bucketed_df["window"].unique()):
         window_data = bucketed_df[bucketed_df["window"] == window].sort_values("bucket")
         smoothed_r2 = compute_ema(window_data["r2"], span=ema_span)
@@ -68,12 +76,36 @@ def plot_bucketed_r2(
             label=f"Window {window}",
         )
 
+    # Overlay Market Events
+    ymin, ymax = ax.get_ylim()
+    y_range = ymax - ymin
+
+    for date_str, event_name in MARKET_EVENTS.items():
+        event_date = pd.Timestamp(date_str)
+        # Only plot if event is within the visible x-axis range
+        if bucketed_df["bucket"].min() <= event_date <= bucketed_df["bucket"].max():
+            ax.axvline(
+                x=event_date, color="black", linestyle="--", alpha=0.4, linewidth=1
+            )
+            # Place text near the bottom of the graph
+            ax.text(
+                event_date,
+                ymin + (y_range * 0.05),
+                f"  {event_name}",
+                rotation=90,
+                verticalalignment="bottom",
+                fontsize=9,
+                color="black",
+                alpha=0.7,
+            )
+
     ax.set_xlabel("Date")
     ax.set_ylabel("R^2 (EMA)")
     ax.set_title(
-        f"{model_name}: R^2 by {bucketed_df['bucket'].diff().mode().iloc[0].days}-Day Buckets (EMA span={ema_span})"
+        f"{model_name}: R^2 by {bucket_days}-Day Buckets (EMA span={ema_span})"
     )
-    ax.legend()
+    # Moved legend to upper left to avoid clashing with bottom text
+    ax.legend(loc="upper left")  # <--- CHANGED: Move legend up
     ax.axhline(y=0, color="gray", linestyle="--", alpha=0.5)
     plt.xticks(rotation=45)
     plt.tight_layout()
@@ -98,7 +130,7 @@ def generate_model_plots(
     bucketed_df = compute_bucketed_r2(results_df, bucket_days)
 
     plot_path = experiment_dir / "eval" / "plots" / "bucketed_r2.png"
-    plot_bucketed_r2(bucketed_df, model_name, plot_path, ema_span)
+    plot_bucketed_r2(bucketed_df, model_name, plot_path, bucket_days, ema_span)
 
 
 def generate_all_plots(
