@@ -1,5 +1,6 @@
 import argparse
 import logging
+from datetime import datetime
 from pathlib import Path
 
 from src.train import run_cross_validation
@@ -11,8 +12,8 @@ logger = logging.getLogger(__name__)
 
 def main():
     logging.info("Starting main...")
-
     logging.info("Parsing arguments...")
+
     parser = argparse.ArgumentParser(
         description="Train and evaluate common ML algorithms on a stock market prediction task!"
     )
@@ -35,25 +36,27 @@ def main():
 
     logger.info("Loading config...")
     config = load_config(args.config)
-
     logging.info(f"Using {config['config_name']} config...")
 
     logging.info("Training all models...")
     for model_conf in config["models"]:
-        logging.info(f"Running cross validation for {model_conf['name']}...")
-        results_df = run_cross_validation(model_conf, config["windows"])
-        summary_df = summarize_results(results_df)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        model_dir = (
+            args.results_dir
+            / model_conf["name"]
+            / f"{config['config_name']}_{timestamp}"
+        )
 
-        logging.info(f"{model_conf['name']} sumary:\n{summary_df}")
+        logging.info(f"Running cross validation for {model_conf['name']}...")
+        results_df = run_cross_validation(
+            model_conf, config["windows"], save_dir=model_dir
+        )
+
+        summary_df = summarize_results(results_df)
+        logging.info(f"{model_conf['name']} summary:\n{summary_df}")
 
         logging.info(f"Saving results for {model_conf['name']}")
-        save_results(
-            results_df,
-            summary_df,
-            model_conf,
-            config["config_name"],
-            args.results_dir,
-        )
+        save_results(results_df, summary_df, model_conf, model_dir)
 
     logging.info("Done!")
 

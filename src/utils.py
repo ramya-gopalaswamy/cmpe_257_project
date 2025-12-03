@@ -19,7 +19,7 @@ def save_results(
 ) -> None:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     model_name = model_config["name"]
-    
+
     # Organize by model first, then by experiment timestamp
     model_dir = results_dir / model_name / f"{experiment_name}_{timestamp}"
     model_dir.mkdir(parents=True, exist_ok=True)
