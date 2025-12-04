@@ -31,6 +31,15 @@ def get_latest_eval_results(experiment_dir: Path) -> pd.DataFrame:
     return pd.read_csv(result_files[-1], parse_dates=["date"])
 
 
+def get_latest_eval_summary(experiment_dir: Path) -> pd.DataFrame:
+    """Load most recent eval summary for a model."""
+    eval_dir = experiment_dir / "eval"
+    summary_files = sorted(eval_dir.glob("summary_*.csv"))
+    if not summary_files:
+        raise FileNotFoundError(f"No eval summary found in {eval_dir}")
+    return pd.read_csv(summary_files[-1])
+
+
 def compute_bucketed_r2(
     results_df: pd.DataFrame,
     bucket_days: int = 7,
@@ -104,8 +113,7 @@ def plot_bucketed_r2(
     ax.set_title(
         f"{model_name}: R^2 by {bucket_days}-Day Buckets (EMA span={ema_span})"
     )
-    # Moved legend to upper left to avoid clashing with bottom text
-    ax.legend(loc="upper left")  # <--- CHANGED: Move legend up
+    ax.legend(loc="upper left")
     ax.axhline(y=0, color="gray", linestyle="--", alpha=0.5)
     plt.xticks(rotation=45)
     plt.tight_layout()
@@ -114,6 +122,62 @@ def plot_bucketed_r2(
     plt.savefig(output_path, dpi=150)
     plt.close()
     logger.info(f"Saved plot to {output_path}")
+
+
+def plot_model_comparison(
+    results_dir: Path,
+    config_name: str,
+    output_path: Path,
+) -> None:
+    """Bar chart comparing best R^2 (by window) across models."""
+    records = []
+
+    for model_dir in results_dir.iterdir():
+        if not model_dir.is_dir():
+            continue
+        experiment_dir = model_dir / config_name
+        if not (experiment_dir / "eval").exists():
+            continue
+
+        summary_df = get_latest_eval_summary(experiment_dir)
+        best_row = summary_df.loc[summary_df["r2"].idxmax()]
+        records.append(
+            {
+                "model": model_dir.name,
+                "best_window": int(best_row["window"]),
+                "r2": best_row["r2"],
+            }
+        )
+
+    if not records:
+        logger.warning("No eval summaries found for comparison plot")
+        return
+
+    df = pd.DataFrame(records).sort_values("r2", ascending=False)
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+    bars = ax.bar(df["model"], df["r2"])
+
+    # Add window labels on bars
+    for bar, window in zip(bars, df["best_window"]):
+        ax.text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height() + 0.001,
+            f"w={window}",
+            ha="center",
+            fontsize=9,
+        )
+
+    ax.axhline(y=0, color="gray", linestyle="--", alpha=0.5)
+    ax.set_ylabel("R^2")
+    ax.set_title(f"Model Comparison: Best R^2 by Window ({config_name})")
+    plt.xticks(rotation=45, ha="right")
+    plt.tight_layout()
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    plt.savefig(output_path, dpi=150)
+    plt.close()
+    logger.info(f"Saved comparison plot to {output_path}")
 
 
 def generate_model_plots(
@@ -150,6 +214,10 @@ def generate_all_plots(
         generate_model_plots(
             model_dir.name, config_name, bucket_days, ema_span, results_dir
         )
+
+    # Generate comparison plot
+    comparison_path = results_dir / config_name / "model_comparison.png"
+    plot_model_comparison(results_dir, config_name, comparison_path)
 
 
 def main():
